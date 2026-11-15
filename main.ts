@@ -1,83 +1,95 @@
-// Golden Sky Tower — the hand-in program for the make.fun roblox-game-01 entry.
+// Golden Core Miner — the hand-in program for the make.fun roblox-game-01 entry.
 //
-// Run it from the repository root:
+// It gathers the finished game out of this repository and into the
+// directory the grader reads: the place file, the play link, the Luau
+// sources and the screenshots, plus a dossier the scorer rebuilds and
+// compares byte for byte. It is deterministic on purpose — run it twice
+// and both outputs match exactly.
+//
+// Run it from anywhere; it finds the repository from its own file, not
+// from the working directory:
 //
 //   MAKEFUN_OUTPUT_DIR=out node main.ts
-//
-// It gathers the game into the output directory and writes the dossier
-// there, so the scorer can check the entry without ever opening the
-// repository itself. Everything it writes is deterministic: run it twice
-// and the output directory holds the same bytes both times.
 
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { buildDossier } from './vendor/makefun-roblox.ts';
+import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { buildDossier } from "./vendor/makefun-roblox.ts";
 
-// The dossier's text is capped at 64 KiB: the scorer's buildDossier
-// call uses this same cap, so our dossier.json must match it byte for
-// byte. The other caps only refuse an oversized place; they never
-// change the bytes, so they are left to the scorer.
-const DOSSIER_TEXT_CAP = 65536;
+// The repository is wherever this file lives, no matter where the
+// command was started from. That is the whole point: the grader runs
+// this program from its own sandbox directory, and a working-directory
+// lookup would point at the wrong place entirely.
+const repo = dirname(fileURLToPath(import.meta.url));
+
+// The hand-in goes where MAKEFUN_OUTPUT_DIR points, or to /output,
+// the directory the grader reads. A relative value is taken as-is,
+// exactly like the kit starter does.
+const handIn = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+
+// Never hand the repository into itself: an output directory equal to
+// the repository root would copy the game over its own sources.
+if (resolve(handIn) === repo) {
+	fail("MAKEFUN_OUTPUT_DIR must not be the repository root itself");
+}
+
+// The dossier caps, copied from the kit starter: only the text cap
+// shapes the bytes; the rest only refuse an oversized entry, so passing
+// them keeps this program honest about what the scorer will accept.
+const dossierCaps = {
+	text_max_bytes: 65536,
+	screenshots: { max: 4, max_bytes: 262144 },
+	max_instances: 500000,
+	scripts_max_source_bytes: 8388608,
+	scripts_max_path_chars: 1048576,
+};
 
 // The single files the entry hands in, and the source tree.
-const LOOSE_FILES = ['game.rbxl', 'PLAY.json'] as const;
-const TREES = ['src'] as const;
+const looseFiles = ["game.rbxl", "PLAY.json"];
+const trees = ["src"];
 
-// The screenshots folder is copied image by image: a local note or
-// any other non-image file sitting beside the captures must never ride
-// into the entry, because the dossier builder refuses a screenshots
-// folder holding anything that is not a PNG or a JPEG.
-const SCREENSHOT_DIR = 'screenshots';
-const IMAGE_NAME = /\.(png|jpe?g)$/i;
-
-// Where the game lives (the directory this program is run from) and
-// where the hand-in goes (MAKEFUN_OUTPUT_DIR, or "out" beside it).
-const repoRoot = resolve(process.cwd());
-const handInDir = resolve(repoRoot, process.env.MAKEFUN_OUTPUT_DIR ?? 'out');
-
-if (handInDir === repoRoot) {
-  throw new Error('MAKEFUN_OUTPUT_DIR must not be the repository root itself');
+function fail(message: string): never {
+	throw new Error(message);
 }
 
-// Check every input exists before touching the hand-in directory, so
-// a missing file fails fast instead of failing after the previous
-// output has already been wiped.
-for (const name of [...LOOSE_FILES, ...TREES, SCREENSHOT_DIR]) {
-  if (!existsSync(join(repoRoot, name))) {
-    throw new Error(`missing entry input: ${name}`);
-  }
+mkdirSync(handIn, { recursive: true });
+
+for (const name of looseFiles) {
+	const from = join(repo, name);
+	if (!existsSync(from)) {
+		fail(`missing entry input: ${name}`);
+	}
+	cpSync(from, join(handIn, name));
 }
 
-// Start from an empty hand-in directory, so a file left over from an
-// earlier run can never sneak into this entry.
-rmSync(handInDir, { recursive: true, force: true });
-mkdirSync(handInDir, { recursive: true });
-
-// Copy each loose file.
-for (const name of LOOSE_FILES) {
-  cpSync(join(repoRoot, name), join(handInDir, name));
+for (const name of trees) {
+	const from = join(repo, name);
+	if (!existsSync(from)) {
+		fail(`missing entry input: ${name}`);
+	}
+	cpSync(from, join(handIn, name), { recursive: true });
 }
 
-// Copy each tree whole, preserving its layout.
-for (const name of TREES) {
-  cpSync(join(repoRoot, name), join(handInDir, name), { recursive: true });
+// Screenshots travel image by image. A stray note or any other file
+// sitting beside the captures stays behind, because the dossier
+// builder refuses a screenshots folder holding anything that is not a
+// PNG or a JPEG.
+const shotsFrom = join(repo, "screenshots");
+const shotsTo = join(handIn, "screenshots");
+mkdirSync(shotsTo, { recursive: true });
+let shotCount = 0;
+if (existsSync(shotsFrom)) {
+	for (const name of readdirSync(shotsFrom)) {
+		if (/\.(png|jpe?g)$/i.test(name)) {
+			cpSync(join(shotsFrom, name), join(shotsTo, name));
+			shotCount += 1;
+		}
+	}
 }
 
-// Copy the screenshots one by one, taking only real captures. Anything
-// else in the folder — a local note, a stray file — is left behind, so
-// the hand-in holds exactly the images the dossier is built from.
-mkdirSync(join(handInDir, SCREENSHOT_DIR), { recursive: true });
-for (const name of readdirSync(join(repoRoot, SCREENSHOT_DIR))) {
-  if (!IMAGE_NAME.test(name)) {
-    continue;
-  }
-  cpSync(join(repoRoot, SCREENSHOT_DIR, name), join(handInDir, SCREENSHOT_DIR, name));
-}
+// The dossier is built from the hand-in itself, so it always describes
+// exactly what was handed in. Its bytes go to dossier.json verbatim.
+const dossier = buildDossier(handIn, dossierCaps);
+writeFileSync(join(handIn, "dossier.json"), dossier);
 
-// The dossier is built from the hand-in directory itself, so it always
-// describes exactly what was handed in. Its bytes go to dossier.json
-// verbatim: no reformatting, no extra fields.
-const dossier = buildDossier(handInDir, { text_max_bytes: DOSSIER_TEXT_CAP });
-writeFileSync(join(handInDir, 'dossier.json'), dossier);
-
-console.log(`Golden Sky Tower handed in: dossier.json is ${dossier.length} bytes.`);
+console.log(`Golden Core Miner handed in: dossier.json is ${dossier.length} bytes, ${shotCount} screenshots.`);
