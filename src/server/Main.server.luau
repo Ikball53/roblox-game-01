@@ -2,14 +2,57 @@
 -- Builds the tower, then watches every touch that matters: green pads
 -- save progress, red bars end the attempt, the gold pad wins the game,
 -- and the cyan pad carries a fallen player back to their checkpoint.
+-- It also sets the sky: a bright morning with soft atmosphere and a
+-- gentle bloom, so the neon trims and stars glow without glare.
 
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local TowerLayout = require(ReplicatedStorage:WaitForChild("TowerLayout"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local TowerBuilder = require(script.Parent:WaitForChild("TowerBuilder"))
 local PlayerState = require(script.Parent:WaitForChild("PlayerState"))
+
+-- A bright morning sky: the sun high enough to light every stage, a
+-- soft blue atmosphere, and a light bloom so neon parts glow. Nothing
+-- here touches gameplay, only how the tower looks in screenshots.
+local function setupSky()
+	Lighting.ClockTime = 10
+	Lighting.Brightness = 2.5
+	Lighting.Ambient = Color3.fromRGB(90, 100, 130)
+	Lighting.OutdoorAmbient = Color3.fromRGB(140, 160, 200)
+	-- A little less diffuse wash and a little more specular shine, so
+	-- the neon trims and stars pop instead of being drowned out.
+	Lighting.EnvironmentDiffuseScale = 0.4
+	Lighting.EnvironmentSpecularScale = 0.6
+
+	local sky = Instance.new("Sky")
+	sky.CelestialBodiesShown = true
+	sky.Parent = Lighting
+
+	local atmosphere = Instance.new("Atmosphere")
+	atmosphere.Density = 0.25
+	atmosphere.Offset = 0.2
+	atmosphere.Color = Color3.fromRGB(200, 220, 255)
+	atmosphere.Decay = Color3.fromRGB(180, 200, 240)
+	atmosphere.Glare = 0.3
+	atmosphere.Haze = 1.2
+	atmosphere.Parent = Lighting
+
+	local bloom = Instance.new("BloomEffect")
+	bloom.Intensity = 0.5
+	bloom.Size = 24
+	bloom.Threshold = 0.85
+	bloom.Parent = Lighting
+
+	local rays = Instance.new("SunRaysEffect")
+	rays.Intensity = 0.2
+	rays.Spread = 0.6
+	rays.Parent = Lighting
+end
+
+setupSky()
 
 local tower = TowerBuilder.buildTower(game:GetService("Workspace"))
 
@@ -99,7 +142,8 @@ for _, bar in ipairs(tower.killBars) do
 	end)
 end
 
--- The gold pad: the climb is done. Tell the winner their time.
+-- The gold pad: the climb is done. Tell the winner their time, and
+-- celebrate over the win pad with a burst of confetti.
 tower.winPad.Touched:Connect(function(hit)
 	local player = Players:GetPlayerFromCharacter(hit.Parent)
 	if player == nil then
@@ -109,6 +153,7 @@ tower.winPad.Touched:Connect(function(hit)
 	if climbTime ~= nil then
 		local record = PlayerState.get(player)
 		winEvent:FireClient(player, climbTime, record ~= nil and record.deaths or 0)
+		TowerBuilder.celebrateWin(tower.winPad.Position)
 	end
 end)
 
