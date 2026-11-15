@@ -1,77 +1,78 @@
--- Main: the server half of Sky Tower Obby.
--- Builds the tower, then watches every touch that matters: green pads
--- save progress, red bars end the attempt, the gold pad wins the game,
--- and the cyan pad carries a fallen player back to their checkpoint.
--- It also sets the sky: a bright morning with soft atmosphere and a
--- gentle bloom, so the neon trims and stars glow without glare.
+-- GoldenTowerMain: the server half of the Golden Sky Tower.
+-- It raises the tower, then watches every touch that matters: emerald
+-- pads save progress, ruby bars end the attempt, the golden crown wins
+-- the game, and the pearl pad carries a fallen climber back to their
+-- checkpoint. It also dresses the sky in golden hour — a low warm sun,
+-- honeyed air and a soft bloom — so the marble and gold shine without
+-- glare. Nothing here moves a platform; only the light changes.
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local TowerLayout = require(ReplicatedStorage:WaitForChild("TowerLayout"))
-local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
+local TowerPlan = require(ReplicatedStorage:WaitForChild("TowerLayout"))
+local TowerTuning = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local TowerBuilder = require(script.Parent:WaitForChild("TowerBuilder"))
 local PlayerState = require(script.Parent:WaitForChild("PlayerState"))
 
--- A bright morning sky: the sun high enough to light every stage, a
--- soft blue atmosphere, and a light bloom so neon parts glow. Nothing
--- here touches gameplay, only how the tower looks in screenshots.
-local function setupSky()
-	Lighting.ClockTime = 10
-	Lighting.Brightness = 2.5
-	Lighting.Ambient = Color3.fromRGB(90, 100, 130)
-	Lighting.OutdoorAmbient = Color3.fromRGB(140, 160, 200)
-	-- A little less diffuse wash and a little more specular shine, so
-	-- the neon trims and stars pop instead of being drowned out.
-	Lighting.EnvironmentDiffuseScale = 0.4
-	Lighting.EnvironmentSpecularScale = 0.6
+-- A golden-hour sky: the sun low and warm, honey-colored air, and a
+-- gentle bloom so the gold trims glow. Nothing here touches gameplay,
+-- only how the tower looks in screenshots.
+local function dressGoldenHour()
+	Lighting.ClockTime = 17.3
+	Lighting.Brightness = 2.2
+	Lighting.Ambient = Color3.fromRGB(120, 95, 75)
+	Lighting.OutdoorAmbient = Color3.fromRGB(200, 160, 120)
+	-- Less flat wash, more shine, so the marble catches the low sun
+	-- and the gold trims glow instead of being drowned out.
+	Lighting.EnvironmentDiffuseScale = 0.35
+	Lighting.EnvironmentSpecularScale = 0.7
 
 	local sky = Instance.new("Sky")
 	sky.CelestialBodiesShown = true
 	sky.Parent = Lighting
 
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.25
-	atmosphere.Offset = 0.2
-	atmosphere.Color = Color3.fromRGB(200, 220, 255)
-	atmosphere.Decay = Color3.fromRGB(180, 200, 240)
-	atmosphere.Glare = 0.3
-	atmosphere.Haze = 1.2
+	atmosphere.Density = 0.3
+	atmosphere.Offset = 0.25
+	atmosphere.Color = Color3.fromRGB(255, 210, 150)
+	atmosphere.Decay = Color3.fromRGB(240, 180, 120)
+	atmosphere.Glare = 0.4
+	atmosphere.Haze = 1
 	atmosphere.Parent = Lighting
 
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.5
-	bloom.Size = 24
-	bloom.Threshold = 0.85
+	bloom.Intensity = 0.35
+	bloom.Size = 28
+	bloom.Threshold = 0.9
 	bloom.Parent = Lighting
 
 	local rays = Instance.new("SunRaysEffect")
-	rays.Intensity = 0.2
-	rays.Spread = 0.6
+	rays.Intensity = 0.25
+	rays.Spread = 0.5
 	rays.Parent = Lighting
 end
 
-setupSky()
+dressGoldenHour()
 
 local tower = TowerBuilder.buildTower(game:GetService("Workspace"))
 
-local function makeRemote(name: string): RemoteEvent
+local function openRemote(name: string): RemoteEvent
 	local remote = Instance.new("RemoteEvent")
 	remote.Name = name
 	remote.Parent = ReplicatedStorage
 	return remote
 end
 
-local checkpointEvent = makeRemote("TowerCheckpoint")
-local winEvent = makeRemote("TowerWin")
-local resetEvent = makeRemote("TowerReset")
+local checkpointEvent = openRemote("TowerCheckpoint")
+local winEvent = openRemote("TowerWin")
+local resetEvent = openRemote("TowerReset")
 
 local spawnCFrame = CFrame.new(26, 3, 0)
 local lastKillAt = {}
 
--- Moves a character to a spot, standing just above it.
-local function teleportPlayer(player: Player, target: CFrame)
+-- Lifts a character to a spot, standing just above it.
+local function carryPlayer(player: Player, target: CFrame)
 	local character = player.Character
 	if character == nil then
 		return
@@ -83,8 +84,8 @@ local function teleportPlayer(player: Player, target: CFrame)
 	character:PivotTo(target + Vector3.new(0, 3, 0))
 end
 
--- A new climber joins: fresh record, and every respawn puts them back
--- at the checkpoint they earned, never at the bottom by surprise.
+-- A new climber joins: a fresh record, and every respawn returns them
+-- to the checkpoint they earned, never to the bottom by surprise.
 local function onPlayerAdded(player: Player)
 	PlayerState.newPlayer(player, spawnCFrame)
 	player.CharacterAdded:Connect(function(character)
@@ -93,7 +94,7 @@ local function onPlayerAdded(player: Player)
 			return
 		end
 		character:WaitForChild("HumanoidRootPart", 5)
-		teleportPlayer(player, record.checkpoint)
+		carryPlayer(player, record.checkpoint)
 	end)
 end
 
@@ -106,7 +107,7 @@ Players.PlayerRemoving:Connect(function(player)
 	lastKillAt[player] = nil
 end)
 
--- Green pads: save the stage, and tell that player's screen about it.
+-- Emerald pads: save the stage, and tell that climber's screen.
 for stageIndex, pad in pairs(tower.checkpoints) do
 	pad.Touched:Connect(function(hit)
 		local player = Players:GetPlayerFromCharacter(hit.Parent)
@@ -120,7 +121,7 @@ for stageIndex, pad in pairs(tower.checkpoints) do
 	end)
 end
 
--- Red bars: one touch ends the attempt. A short cooldown keeps one
+-- Ruby bars: one touch ends the attempt. A short cooldown keeps one
 -- brush from counting twice.
 for _, bar in ipairs(tower.killBars) do
 	bar.Touched:Connect(function(hit)
@@ -130,7 +131,7 @@ for _, bar in ipairs(tower.killBars) do
 			return
 		end
 		local now = os.clock()
-		if lastKillAt[player] ~= nil and now - lastKillAt[player] < GameConfig.TOUCH_COOLDOWN then
+		if lastKillAt[player] ~= nil and now - lastKillAt[player] < TowerTuning.TOUCH_COOLDOWN then
 			return
 		end
 		lastKillAt[player] = now
@@ -142,8 +143,8 @@ for _, bar in ipairs(tower.killBars) do
 	end)
 end
 
--- The gold pad: the climb is done. Tell the winner their time, and
--- celebrate over the win pad with a burst of confetti.
+-- The golden crown: the climb is done. Tell the winner their time,
+-- and celebrate over the crown pad with a shower of gold.
 tower.winPad.Touched:Connect(function(hit)
 	local player = Players:GetPlayerFromCharacter(hit.Parent)
 	if player == nil then
@@ -152,12 +153,13 @@ tower.winPad.Touched:Connect(function(hit)
 	local climbTime = PlayerState.finish(player)
 	if climbTime ~= nil then
 		local record = PlayerState.get(player)
-		winEvent:FireClient(player, climbTime, record ~= nil and record.deaths or 0)
+		local best = record ~= nil and record.bestTime or nil
+		winEvent:FireClient(player, climbTime, record ~= nil and record.deaths or 0, best)
 		TowerBuilder.celebrateWin(tower.winPad.Position)
 	end
 end)
 
--- The cyan pad on the ground: a fallen player steps on it and goes
+-- The pearl pad on the ground: a fallen climber steps on it and goes
 -- straight back to their checkpoint.
 tower.returnPad.Touched:Connect(function(hit)
 	local player = Players:GetPlayerFromCharacter(hit.Parent)
@@ -166,21 +168,21 @@ tower.returnPad.Touched:Connect(function(hit)
 	end
 	local record = PlayerState.get(player)
 	if record ~= nil then
-		teleportPlayer(player, record.checkpoint)
+		carryPlayer(player, record.checkpoint)
 	end
 end)
 
--- "Play again" from the win screen: clean clock, back to stage 1.
+-- "Play again" from the win screen: a clean clock, back to stage 1.
 resetEvent.OnServerEvent:Connect(function(player)
 	local record = PlayerState.get(player)
 	if record == nil then
 		return
 	end
 	PlayerState.resetForReplay(player, spawnCFrame)
-	teleportPlayer(player, spawnCFrame)
+	carryPlayer(player, spawnCFrame)
 end)
 
--- One slow watch for falls: a player under the tower has lost the
+-- One slow watch for falls: a climber under the tower has lost the
 -- climb, so they wake up at their checkpoint.
 task.spawn(function()
 	while true do
@@ -192,9 +194,9 @@ task.spawn(function()
 			end
 			local root = character:FindFirstChild("HumanoidRootPart")
 			local record = PlayerState.get(player)
-			if root ~= nil and record ~= nil and root.Position.Y < GameConfig.FALL_HEIGHT then
+			if root ~= nil and record ~= nil and root.Position.Y < TowerTuning.FALL_HEIGHT then
 				PlayerState.addDeath(player)
-				teleportPlayer(player, record.checkpoint)
+				carryPlayer(player, record.checkpoint)
 			end
 		end
 	end
