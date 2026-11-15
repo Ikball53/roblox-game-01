@@ -12,7 +12,12 @@ GameData.ZONES = {
 		unlockGems = 0,
 		field = Color3.fromRGB(16, 58, 66),
 		accent = Color3.fromRGB(255, 176, 66),
-		rockEvery = { min = 4, max = 6.5 },
+		-- Gentle opening: rocks come slower and warn longer so a
+		-- first-time player can mine 25 gems before the run ends.
+		rockEvery = { min = 6, max = 9 },
+		rockWarn = 1.6,
+		-- Fewer rocks aimed straight at the miner while learning.
+		rockAimMiner = 0.35,
 		ores = {
 			{ name = "Copper", color = Color3.fromRGB(214, 116, 60), hits = 2, gems = 1, weight = 65 },
 			{ name = "Tin", color = Color3.fromRGB(168, 178, 190), hits = 2, gems = 1, weight = 35 },
@@ -26,6 +31,8 @@ GameData.ZONES = {
 		field = Color3.fromRGB(24, 32, 86),
 		accent = Color3.fromRGB(86, 178, 255),
 		rockEvery = { min = 3.5, max = 5.5 },
+		rockWarn = 0.9,
+		rockAimMiner = 0.5,
 		ores = {
 			{ name = "Sapphire", color = Color3.fromRGB(62, 132, 255), hits = 3, gems = 3, weight = 60 },
 			{ name = "Emerald", color = Color3.fromRGB(46, 204, 113), hits = 4, gems = 5, weight = 40 },
@@ -39,6 +46,8 @@ GameData.ZONES = {
 		field = Color3.fromRGB(74, 32, 20),
 		accent = Color3.fromRGB(255, 210, 63),
 		rockEvery = { min = 3, max = 5 },
+		rockWarn = 0.9,
+		rockAimMiner = 0.5,
 		ores = {
 			{ name = "Gold", color = Color3.fromRGB(255, 200, 40), hits = 4, gems = 6, weight = 60 },
 			{ name = "Ruby", color = Color3.fromRGB(224, 52, 92), hits = 5, gems = 8, weight = 40 },
