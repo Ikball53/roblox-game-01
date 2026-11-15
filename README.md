@@ -1,5 +1,9 @@
 # Golden Sky Tower — make.fun roblox-game-01 entry
 
+[![make.fun · roblox-game-01](https://make.fun/badge/roblox-game-01.svg)](https://make.fun/bounty/roblox-game-01?utm_source=github&utm_medium=readme&utm_campaign=roblox-game-01)
+[![rank](https://make.fun/badge/roblox-game-01/Ikball53/roblox-game-01/rank.svg)](https://make.fun/bounty/roblox-game-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=roblox-game-01)
+[![reward](https://make.fun/badge/roblox-game-01/Ikball53/roblox-game-01/reward.svg)](https://make.fun/bounty/roblox-game-01?utm_source=github&utm_medium=readme&utm_campaign=roblox-game-01)
+
 A 3D obby tower climb. Twelve stages spiral around a central column:
 jump the platforms, ride the moving ones from stage 4, dodge the red
 kill bars from stage 6, touch green to save a checkpoint, and reach the
