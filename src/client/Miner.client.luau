@@ -310,15 +310,9 @@ local function buildGame()
 	}, miner)
 	ui.miner = miner
 
-	-- Double-tap the empty field to dash. The nodes sit above this pad.
-	local pad = GuiKit.make("TextButton", {
-		Name = "FieldPad",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		Text = "",
-		ZIndex = 1,
-	}, fieldFrame)
-	ui.fieldPad = pad
+	-- No full-field pad here on purpose: an invisible button over the
+	-- field would sit above the ore nodes and swallow every tap, so the
+	-- nodes stay the direct tap targets. Dashing lives on the DASH button.
 
 	-- Bottom row: Workshop on the left, DASH on the right.
 	ui.workshopButton = GuiKit.button("WORKSHOP", screen)
@@ -576,7 +570,9 @@ local function moveMinerTo(slotIndex)
 	end
 	local pos = slot.button.Position
 	local goal = UDim2.fromScale(pos.X.Scale + 0.005, pos.Y.Scale - 0.05)
-	TweenService:Create(ui.miner, TweenInfo.new(0.15, Enum.EasingStyle.Quad), { Position = goal }):Play()
+	-- Quick hop so the miner visibly answers the tap at once: the tap
+	-- lands on the node button itself now, nothing sits above it.
+	TweenService:Create(ui.miner, TweenInfo.new(0.12, Enum.EasingStyle.Quad), { Position = goal }):Play()
 end
 
 local function zoneCheck()
@@ -700,20 +696,21 @@ end
 local function rockLoop()
 	while state.running do
 		-- Deeper zones rain rocks faster, so the endgame stays tense.
-		local rate = GameData.ZONES[state.zone].rockEvery
+		local zone = GameData.ZONES[state.zone]
+		local rate = zone.rockEvery
 		local waitFor = math.random(rate.min * 10, rate.max * 10) / 10
 		task.wait(waitFor)
 		if not state.running then
 			break
 		end
 		local target
-		if math.random() < 0.5 then
+		if math.random() < (zone.rockAimMiner or 0.5) then
 			target = state.minerSlot
 		else
 			target = math.random(1, GameData.TUNING.nodeCount)
 		end
 		ui.field:warnSlot(target)
-		task.wait(GameData.TUNING.rockWarnSeconds)
+		task.wait(zone.rockWarn or GameData.TUNING.rockWarnSeconds)
 		if not state.running then
 			break
 		end
@@ -822,13 +819,5 @@ for i, slot in ipairs(ui.field.slots) do
 end
 ui.field.core.Activated:Connect(mineCore)
 
-local lastPadTap = 0
-ui.fieldPad.Activated:Connect(function()
-	local now = os.clock()
-	if now - lastPadTap < 0.35 then
-		dash()
-	end
-	lastPadTap = now
-end)
 
 refreshHud()
