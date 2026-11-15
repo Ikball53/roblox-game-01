@@ -20,12 +20,23 @@ GameConfig.FALL_HEIGHT = -20
 -- How often the client refreshes the timer label, in seconds.
 GameConfig.TIMER_TICK = 0.1
 
+-- Pure decoration: how many floating stars sparkle around each stage,
+-- how fast they spin, and how many confetti pieces burst when someone
+-- wins. None of these can touch the player or change a single jump.
+GameConfig.DECOR = {
+	starsPerStage = 3,
+	starSpinTime = 6,
+	confettiPieces = 60,
+	confettiLifetime = 4,
+}
+
 -- The messages the player sees. Short, big, and readable at a glance.
 GameConfig.TEXT = {
 	title = "SKY TOWER OBBY",
 	subtitle = "Climb 12 stages. Touch green to save. Reach the gold!",
 	checkpoint = "Checkpoint saved!",
 	win = "YOU WIN!",
+	winSub = "You conquered all 12 stages!",
 	winAgain = "Play again",
 	fell = "You fell! Back to your checkpoint.",
 }
