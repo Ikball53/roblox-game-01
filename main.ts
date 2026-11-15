@@ -1,53 +1,83 @@
-// Sky Tower Obby — the hand-in program for make.fun's roblox-game-01.
-// It gathers the game (the place, its Luau, its screenshots and its
-// play link) into the output directory and writes the dossier the
-// scorer checks, using the kit's own library. Standard library only,
-// no network, and the same bytes on every run.
+// Golden Sky Tower — the hand-in program for the make.fun roblox-game-01 entry.
+//
+// Run it from the repository root:
+//
+//   MAKEFUN_OUTPUT_DIR=out node main.ts
+//
+// It gathers the game into the output directory and writes the dossier
+// there, so the scorer can check the entry without ever opening the
+// repository itself. Everything it writes is deterministic: run it twice
+// and the output directory holds the same bytes both times.
 
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { buildDossier } from './vendor/makefun-roblox.ts';
 
-const repoRoot = dirname(fileURLToPath(import.meta.url));
-const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+// The dossier's text is capped at 64 KiB: the scorer's buildDossier
+// call uses this same cap, so our dossier.json must match it byte for
+// byte. The other caps only refuse an oversized place; they never
+// change the bytes, so they are left to the scorer.
+const DOSSIER_TEXT_CAP = 65536;
 
-const IMAGE_SUFFIX = /\.(png|jpe?g)$/i;
+// The single files the entry hands in, and the source tree.
+const LOOSE_FILES = ['game.rbxl', 'PLAY.json'] as const;
+const TREES = ['src'] as const;
 
-function copyTree(from: string, to: string): void {
-	mkdirSync(to, { recursive: true });
-	cpSync(from, to, { recursive: true });
+// The screenshots folder is copied image by image: a local note or
+// any other non-image file sitting beside the captures must never ride
+// into the entry, because the dossier builder refuses a screenshots
+// folder holding anything that is not a PNG or a JPEG.
+const SCREENSHOT_DIR = 'screenshots';
+const IMAGE_NAME = /\.(png|jpe?g)$/i;
+
+// Where the game lives (the directory this program is run from) and
+// where the hand-in goes (MAKEFUN_OUTPUT_DIR, or "out" beside it).
+const repoRoot = resolve(process.cwd());
+const handInDir = resolve(repoRoot, process.env.MAKEFUN_OUTPUT_DIR ?? 'out');
+
+if (handInDir === repoRoot) {
+  throw new Error('MAKEFUN_OUTPUT_DIR must not be the repository root itself');
 }
 
-// Only the pictures travel: a note file in the folder is not a
-// screenshot, and the dossier refuses any file that is not one.
-function copyScreenshots(from: string, to: string): void {
-	if (!existsSync(from)) {
-		throw new Error(`screenshots folder is missing: ${from} — take the screenshots in Studio first (see screenshots/NOTE.md)`);
-	}
-	mkdirSync(to, { recursive: true });
-	for (const entry of readdirSync(from, { withFileTypes: true })) {
-		if (!entry.isFile() || !IMAGE_SUFFIX.test(entry.name)) {
-			continue;
-		}
-		copyFileSync(join(from, entry.name), join(to, entry.name));
-	}
+// Check every input exists before touching the hand-in directory, so
+// a missing file fails fast instead of failing after the previous
+// output has already been wiped.
+for (const name of [...LOOSE_FILES, ...TREES, SCREENSHOT_DIR]) {
+  if (!existsSync(join(repoRoot, name))) {
+    throw new Error(`missing entry input: ${name}`);
+  }
 }
 
-rmSync(outDir, { recursive: true, force: true });
-mkdirSync(outDir, { recursive: true });
+// Start from an empty hand-in directory, so a file left over from an
+// earlier run can never sneak into this entry.
+rmSync(handInDir, { recursive: true, force: true });
+mkdirSync(handInDir, { recursive: true });
 
-copyFileSync(join(repoRoot, 'game.rbxl'), join(outDir, 'game.rbxl'));
-copyTree(join(repoRoot, 'src'), join(outDir, 'src'));
-copyScreenshots(join(repoRoot, 'screenshots'), join(outDir, 'screenshots'));
-copyFileSync(join(repoRoot, 'PLAY.json'), join(outDir, 'PLAY.json'));
-
-let dossier: Uint8Array;
-try {
-	dossier = buildDossier(outDir, { text_max_bytes: 65536 });
-} catch (err) {
-	throw new Error(`dossier build failed: ${(err as Error).message}`);
+// Copy each loose file.
+for (const name of LOOSE_FILES) {
+  cpSync(join(repoRoot, name), join(handInDir, name));
 }
-writeFileSync(join(outDir, 'dossier.json'), dossier);
 
-console.log(`Sky Tower Obby handed in: dossier.json is ${dossier.length} bytes.`);
+// Copy each tree whole, preserving its layout.
+for (const name of TREES) {
+  cpSync(join(repoRoot, name), join(handInDir, name), { recursive: true });
+}
+
+// Copy the screenshots one by one, taking only real captures. Anything
+// else in the folder — a local note, a stray file — is left behind, so
+// the hand-in holds exactly the images the dossier is built from.
+mkdirSync(join(handInDir, SCREENSHOT_DIR), { recursive: true });
+for (const name of readdirSync(join(repoRoot, SCREENSHOT_DIR))) {
+  if (!IMAGE_NAME.test(name)) {
+    continue;
+  }
+  cpSync(join(repoRoot, SCREENSHOT_DIR, name), join(handInDir, SCREENSHOT_DIR, name));
+}
+
+// The dossier is built from the hand-in directory itself, so it always
+// describes exactly what was handed in. Its bytes go to dossier.json
+// verbatim: no reformatting, no extra fields.
+const dossier = buildDossier(handInDir, { text_max_bytes: DOSSIER_TEXT_CAP });
+writeFileSync(join(handInDir, 'dossier.json'), dossier);
+
+console.log(`Golden Sky Tower handed in: dossier.json is ${dossier.length} bytes.`);
