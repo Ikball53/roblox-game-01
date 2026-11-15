@@ -1,4 +1,4 @@
-# Sky Tower Obby — make.fun roblox-game-01 entry
+# Golden Sky Tower — make.fun roblox-game-01 entry
 
 A 3D obby tower climb. Twelve stages spiral around a central column:
 jump the platforms, ride the moving ones from stage 4, dodge the red
