@@ -103,35 +103,45 @@ screen.Name = "SkyTowerHud"
 screen.ResetOnSpawn = false
 screen.Parent = playerGui
 
--- The climb HUD, all in one frame so the opening screen can hide it
--- with a single switch. It starts hidden: the opening screen owns the
--- screen until PLAY is pressed.
-local hudFrame = Instance.new("Frame")
-hudFrame.Name = "HudGroup"
-hudFrame.Size = UDim2.new(1, 0, 1, 0)
-hudFrame.BackgroundTransparency = 1
-hudFrame.Visible = false
-hudFrame.Parent = screen
+-- The climb HUD is a slim strip across the top of the screen, nothing
+-- more. It is deliberately NOT full-screen: the old full-screen frame
+-- swallowed every drag and pinch, which left the player unable to turn
+-- the camera or zoom in — the lens sat far away and could not be
+-- pulled closer. With only this strip and the small stats column on
+-- the right, a finger anywhere else reaches the camera directly.
+-- Every piece here is also marked inactive, so the HUD never claims a
+-- touch. The strip starts hidden: the opening screen owns the screen
+-- until PLAY is pressed.
+local hudTop = Instance.new("Frame")
+hudTop.Name = "HudTop"
+hudTop.Size = UDim2.new(1, 0, 0, 104)
+hudTop.BackgroundTransparency = 1
+hudTop.Active = false
+hudTop.Visible = false
+hudTop.Parent = screen
 
--- The game's name and its goal, top center where the eye lands first.
--- Gold on the warm world, once only: this is the only title in the HUD.
-paintLabel(hudFrame, "Title", TowerTuning.TEXT.title, 40, UDim2.new(0.5, 0, 0, 8), Vector2.new(0.5, 0))
-local titleLabel = hudFrame:FindFirstChild("Title") :: TextLabel
-titleLabel.Font = Enum.Font.GothamBlack
-titleLabel.TextColor3 = RICH_GOLD
-paintLabel(hudFrame, "Subtitle", TowerTuning.TEXT.subtitle, 20, UDim2.new(0.5, 0, 0, 58), Vector2.new(0.5, 0))
+-- The game's name, shrunk to one small gold line: the big title lives
+-- only on the opening screen. During the climb it stays out of the
+-- way, small above the progress bar and nowhere else. The subtitle is
+-- gone from the climb entirely — it already said its piece on the
+-- opening screen.
+local hudTitle = paintLabel(hudTop, "HudTitle", TowerTuning.TEXT.title, 16, UDim2.new(0.5, 0, 0, 6), Vector2.new(0.5, 0))
+hudTitle.Font = Enum.Font.GothamBlack
+hudTitle.TextColor3 = RICH_GOLD
+hudTitle.Active = false
 
--- A slim golden bar under the subtitle: it fills as the climber rises,
--- so one glance shows how far up the tower they are.
+-- A slim golden bar under the small title: it fills as the climber
+-- rises, so one glance shows how far up the tower they are.
 local progressBack = Instance.new("Frame")
 progressBack.Name = "ProgressBack"
-progressBack.Size = UDim2.new(0, 300, 0, 10)
-progressBack.Position = UDim2.new(0.5, 0, 0, 96)
+progressBack.Size = UDim2.new(0, 220, 0, 8)
+progressBack.Position = UDim2.new(0.5, 0, 0, 40)
 progressBack.AnchorPoint = Vector2.new(0.5, 0)
 progressBack.BackgroundColor3 = WARM_DARK
 progressBack.BackgroundTransparency = 0.3
 progressBack.BorderSizePixel = 0
-progressBack.Parent = hudFrame
+progressBack.Active = false
+progressBack.Parent = hudTop
 local progressBackCorner = Instance.new("UICorner")
 progressBackCorner.CornerRadius = UDim.new(0, 5)
 progressBackCorner.Parent = progressBack
@@ -141,6 +151,7 @@ progressFill.Name = "ProgressFill"
 progressFill.Size = UDim2.new(1 / 12, 0, 1, 0)
 progressFill.BackgroundColor3 = DEEP_GOLD
 progressFill.BorderSizePixel = 0
+progressFill.Active = false
 progressFill.Parent = progressBack
 local progressFillCorner = Instance.new("UICorner")
 progressFillCorner.CornerRadius = UDim.new(0, 5)
@@ -148,18 +159,25 @@ progressFillCorner.Parent = progressFill
 
 -- Stage, timer and deaths, stacked top right in one tidy column. The
 -- stage number is gold so it reads as part of the tower, not the clock.
-local stageLabel = paintLabel(hudFrame, "Stage", "Stage 1 / 12", 26, UDim2.new(1, -16, 0, 8), Vector2.new(1, 0))
+-- All three are marked inactive like the rest of the strip.
+local stageLabel = paintLabel(hudTop, "Stage", "Stage 1 / 12", 24, UDim2.new(1, -16, 0, 4), Vector2.new(1, 0))
 stageLabel.TextXAlignment = Enum.TextXAlignment.Right
 stageLabel.TextColor3 = RICH_GOLD
-local timerLabel = paintLabel(hudFrame, "Timer", "0:00.0", 26, UDim2.new(1, -16, 0, 44), Vector2.new(1, 0))
+stageLabel.Active = false
+local timerLabel = paintLabel(hudTop, "Timer", "0:00.0", 24, UDim2.new(1, -16, 0, 38), Vector2.new(1, 0))
 timerLabel.TextXAlignment = Enum.TextXAlignment.Right
-local deathsLabel = paintLabel(hudFrame, "Deaths", "Deaths: 0", 22, UDim2.new(1, -16, 0, 80), Vector2.new(1, 0))
+timerLabel.Active = false
+local deathsLabel = paintLabel(hudTop, "Deaths", "Deaths: 0", 20, UDim2.new(1, -16, 0, 70), Vector2.new(1, 0))
 deathsLabel.TextXAlignment = Enum.TextXAlignment.Right
 deathsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+deathsLabel.Active = false
 
--- One big center message for checkpoints and falls; it fades away.
-local messageLabel = paintLabel(hudFrame, "Message", "", 34, UDim2.new(0.5, 0, 0.35, 0), Vector2.new(0.5, 0))
+-- One big center message for checkpoints and falls; it fades away. It
+-- hangs straight off the screen instead of the HUD strip, so it is
+-- one small box in the middle of the screen and never a sheet over it.
+local messageLabel = paintLabel(screen, "Message", "", 34, UDim2.new(0.5, 0, 0.35, 0), Vector2.new(0.5, 0))
 messageLabel.Font = Enum.Font.GothamBlack
+messageLabel.Active = false
 
 local messageUntil = 0
 local function showMessage(text: string, seconds: number)
@@ -294,13 +312,59 @@ task.spawn(function()
 	end
 end)
 
+-- The camera, settled close to the climber. The default lens starts
+-- far away, and with the old full-screen HUD eating every touch the
+-- player could not drag it closer or pinch it in. Two guards fix it:
+-- the HUD no longer covers the screen, and PLAY pulls the lens in
+-- tight and hands it back to the player in Custom mode with a sane
+-- zoom range, so drag and pinch work from the first step.
+local CAMERA_NEAR = 14
+local CAMERA_CLOSE = 6
+local CAMERA_WIDE = 40
+
+local function settleCamera()
+	local lens = workspace.CurrentCamera
+	if lens == nil then
+		return
+	end
+	lens.CameraType = Enum.CameraType.Custom
+	player.CameraMinZoomDistance = CAMERA_CLOSE
+	player.CameraMaxZoomDistance = CAMERA_NEAR
+	-- Point the lens at a close view behind the climber; the Custom
+	-- camera takes over from here and the zoom clamp keeps it near.
+	local character = player.Character
+	local root = character ~= nil and character:FindFirstChild("HumanoidRootPart") or nil
+	if root ~= nil then
+		local focus = root.Position
+		lens.CFrame = CFrame.lookAt(focus + Vector3.new(0, 4, CAMERA_NEAR), focus + Vector3.new(0, 2, 0))
+	end
+	-- After a breath, let the player pull out a little further if
+	-- they want the whole tower in frame.
+	task.delay(1, function()
+		player.CameraMaxZoomDistance = CAMERA_WIDE
+	end)
+end
+
 playButton.MouseButton1Click:Connect(function()
-	startScreen.Visible = false
-	hudFrame.Visible = true
+	-- The opening screen is done forever: destroy it, don't just hide
+	-- it, so no invisible veil can ever swallow a touch again.
+	startScreen:Destroy()
+	hudTop.Visible = true
 	started = true
 	attemptStart = os.clock()
 	timerLabel.Text = "0:00.0"
+	settleCamera()
 end)
+
+-- A fresh spawn gets the same close lens: the camera resets when the
+-- character does, so re-settle it a beat after every respawn, and once
+-- up front so the tower already sits close behind the opening veil.
+player.CharacterAdded:Connect(function()
+	task.wait(0.5)
+	settleCamera()
+end)
+
+settleCamera()
 
 checkpointEvent.OnClientEvent:Connect(function(stageIndex: number)
 	stageLabel.Text = "Stage " .. tostring(stageIndex) .. " / 12"
@@ -321,7 +385,11 @@ winEvent.OnClientEvent:Connect(function(climbTime: number, deathCount: number, s
 	else
 		finishBest.Text = "BEST TIME --:--"
 	end
-	hudFrame.Visible = false
+	hudTop.Visible = false
+	-- A leftover checkpoint or fall message must not survive over the
+	-- finish screen.
+	messageLabel.Text = ""
+	messageUntil = 0
 	finishScreen.Visible = true
 	finishConfetti()
 end)
@@ -340,5 +408,6 @@ playAgainButton.MouseButton1Click:Connect(function()
 	messageLabel.Text = ""
 	messageUntil = 0
 	finishScreen.Visible = false
-	hudFrame.Visible = true
+	hudTop.Visible = true
+	settleCamera()
 end)
