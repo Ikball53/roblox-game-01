@@ -36,7 +36,7 @@ GoldenTowerConfig.SPARKLE = {
 -- The words the climber reads on screen. Short, warm, and large
 -- enough to read at a glance on a phone.
 GoldenTowerConfig.TEXT = {
-	title = "SKY TOWER OBBY",
+	title = "GOLDEN SKY TOWER",
 	subtitle = "Climb 12 stages. Touch green to save. Reach the gold!",
 	checkpoint = "Checkpoint saved!",
 	win = "YOU WIN!",
