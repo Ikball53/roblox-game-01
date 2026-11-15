@@ -1,37 +1,41 @@
--- GameConfig: every tuning number of Sky Tower Obby in one place.
--- Nothing here is a guess at runtime: the server and the client both
--- read these, so a tweak lands everywhere at once.
+-- GoldenTowerConfig: every number that tunes the Golden Sky Tower lives
+-- in this one module. The server and the client both read from it, so a
+-- single change here reaches the whole game at once. Nothing in this
+-- file moves a platform or changes a rule: it only tunes how far things
+-- slide, how long a touch is ignored, and how the celebration looks.
 
-local GameConfig = {}
+local GoldenTowerConfig = {}
 
--- How far a moving platform slides from its home spot, in studs.
-GameConfig.MOVE_DISTANCE = 5
--- How long one slide takes, in seconds (there and back).
-GameConfig.MOVE_TIME = 2.5
+-- A moving platform glides this far from its home position, in studs.
+GoldenTowerConfig.SLIDE_DISTANCE = 5
+-- One glide takes this long, in seconds, there and back again.
+GoldenTowerConfig.SLIDE_TIME = 2.5
 
--- A touch only counts again after this many seconds, so one brush with
--- a kill bar cannot kill the same player twice.
-GameConfig.TOUCH_COOLDOWN = 1
+-- After a kill bar brushes a player, further touches are ignored for
+-- this many seconds, so one brush can never kill the same player twice.
+GoldenTowerConfig.HIT_COOLDOWN = 1
 
--- Falling below this height means the climb is over for this attempt:
--- the player goes back to their checkpoint.
-GameConfig.FALL_HEIGHT = -20
+-- Dropping below this height ends the attempt: the climber wakes up at
+-- the checkpoint they earned, never at the bottom.
+GoldenTowerConfig.FALL_LINE = -20
 
--- How often the client refreshes the timer label, in seconds.
-GameConfig.TIMER_TICK = 0.1
+-- How often the client redraws the climb timer, in seconds.
+GoldenTowerConfig.CLOCK_TICK = 0.1
 
--- Pure decoration: how many floating stars sparkle around each stage,
--- how fast they spin, and how many confetti pieces burst when someone
--- wins. None of these can touch the player or change a single jump.
-GameConfig.DECOR = {
+-- The golden sparkle that dresses the tower: a few slow-turning stars
+-- beside every stage, and a burst of gold confetti over the crown when
+-- somebody finishes. All of it is weightless decoration — it can never
+-- be touched, and it never changes a single jump.
+GoldenTowerConfig.SPARKLE = {
 	starsPerStage = 3,
-	starSpinTime = 6,
+	starTurnTime = 8,
 	confettiPieces = 60,
 	confettiLifetime = 4,
 }
 
--- The messages the player sees. Short, big, and readable at a glance.
-GameConfig.TEXT = {
+-- The words the climber reads on screen. Short, warm, and large
+-- enough to read at a glance on a phone.
+GoldenTowerConfig.TEXT = {
 	title = "SKY TOWER OBBY",
 	subtitle = "Climb 12 stages. Touch green to save. Reach the gold!",
 	checkpoint = "Checkpoint saved!",
@@ -41,4 +45,19 @@ GameConfig.TEXT = {
 	fell = "You fell! Back to your checkpoint.",
 }
 
-return GameConfig
+-- Friendly short names, so the rest of the code reads like the game it
+-- builds. One map, one loop: each old name points at the same value as
+-- its new name, so nothing is ever written twice.
+local LEGACY_NAMES = {
+	MOVE_DISTANCE = "SLIDE_DISTANCE",
+	MOVE_TIME = "SLIDE_TIME",
+	TOUCH_COOLDOWN = "HIT_COOLDOWN",
+	FALL_HEIGHT = "FALL_LINE",
+	TIMER_TICK = "CLOCK_TICK",
+	DECOR = "SPARKLE",
+}
+for oldName, newName in pairs(LEGACY_NAMES) do
+	GoldenTowerConfig[oldName] = GoldenTowerConfig[newName]
+end
+
+return GoldenTowerConfig
